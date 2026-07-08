@@ -1,218 +1,540 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dual Hand Kinetic Flower Mirror</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: #0a0a0f;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            font-family: sans-serif;
-        }
-        canvas {
-            display: block;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.8);
-            border-radius: 12px;
-        }
-        #ui-overlay {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: rgba(255,255,255,0.8);
-            background: rgba(0,0,0,0.5);
-            padding: 15px;
-            border-radius: 8px;
-            pointer-events: none;
-            line-height: 1.5;
-        }
-        .status { font-weight: bold; color: #4caf50; }
-        .data-label { color: #ffb74d; }
-    </style>
-    <script src="https://cloudflare.com"></script>
-    <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
-    <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kinetic Bloom — Dual-Hand Procedural Flora</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --panel: rgba(16, 18, 28, 0.72);
+      --stroke: rgba(120, 140, 200, 0.22);
+      --accent: #6ad0ff;
+      --accent-warm: #ff8ab5;
+      --text: #d7dcf0;
+      --muted: #737a94;
+      --good: #58e08a;
+      --wait: #f0c65a;
+      --fail: #ff6f7d;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
+      overflow: hidden;
+    }
+
+    #stage {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(1200px 600px at 50% 8%, rgba(50, 60, 110, 0.18), transparent 60%),
+        var(--bg);
+    }
+
+    #frame {
+      position: relative;
+      width: 960px;
+      height: 540px;
+      max-width: 96vw;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(120, 140, 200, 0.14),
+        0 30px 90px rgba(0, 0, 0, 0.6);
+    }
+
+    #frame canvas {
+      display: block;
+      border-radius: 14px;
+    }
+
+    .input_video {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      opacity: 0;
+      pointer-events: none;
+      top: -10px;
+      left: -10px;
+    }
+
+    #telemetry {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      width: 268px;
+      padding: 14px 16px 16px;
+      background: var(--panel);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .tel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .tel-title {
+      font-size: 12px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .tel-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--wait);
+      box-shadow: 0 0 10px currentColor;
+      transition: background 0.3s ease;
+    }
+
+    .tel-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      padding: 5px 0;
+    }
+
+    .tel-label { color: var(--muted); text-transform: uppercase; }
+    .tel-value { color: var(--text); font-variant-numeric: tabular-nums; }
+
+    .bar {
+      position: relative;
+      height: 6px;
+      margin-top: 4px;
+      margin-bottom: 6px;
+      background: rgba(120, 140, 200, 0.12);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .bar > span {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 0%;
+      border-radius: 4px;
+      transition: width 0.08s linear;
+    }
+
+    #stemBar > span { background: linear-gradient(90deg, #4f8bff, var(--accent)); }
+    #bloomBar > span { background: linear-gradient(90deg, #ff6f9c, var(--accent-warm)); }
+
+    .tel-status {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--stroke);
+      font-size: 10.5px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    .tel-status b { color: var(--text); font-weight: 600; }
+
+    #legend {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      padding: 12px 14px;
+      background: var(--panel);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      font-size: 10.5px;
+      line-height: 1.7;
+      color: var(--muted);
+      user-select: none;
+      pointer-events: none;
+    }
+
+    #legend b { color: var(--accent); }
+    #legend .warm { color: var(--accent-warm); }
+  </style>
 </head>
 <body>
-
-    <div id="ui-overlay">
-        <div id="loading-status">🔄 Initializing MediaPipe Engine...</div>
-        <div id="telemetry" style="display:none;">
-            Status: <span class="status">Active Tracking</span><br>
-            Left Hand (Grow): <span id="grow-val" class="data-label">0.00</span><br>
-            Right Hand (Bloom): <span id="bloom-val" class="data-label">0.00</span>
+  <div id="stage">
+    <div id="frame">
+      <video class="input_video" playsinline></video>
+      <div id="telemetry">
+        <div class="tel-head">
+          <span class="tel-title">Kinetic Bloom</span>
+          <span class="tel-dot" id="statusDot"></span>
         </div>
+        <div class="tel-row"><span class="tel-label">Pipeline</span><span class="tel-value" id="valPipeline">booting</span></div>
+        <div class="tel-row"><span class="tel-label">Hands</span><span class="tel-value" id="valHands">0 / 2</span></div>
+        <div class="tel-row"><span class="tel-label">Frame Rate</span><span class="tel-value" id="valFps">0 fps</span></div>
+        <div class="tel-row"><span class="tel-label">Stalk Elongation</span><span class="tel-value" id="valStem">0%</span></div>
+        <div class="bar" id="stemBar"><span></span></div>
+        <div class="tel-row"><span class="tel-label">Petal Bloom</span><span class="tel-value" id="valBloom">0%</span></div>
+        <div class="bar" id="bloomBar"><span></span></div>
+        <div class="tel-status" id="statusText">Requesting camera access. Grant the permission prompt to begin tracking.</div>
+      </div>
+      <div id="legend">
+        <div><b>Left hand</b> · raise / lower &rarr; stalk height</div>
+        <div><span class="warm">Right hand</span> · pinch thumb + index &rarr; petal bloom</div>
+      </div>
     </div>
+  </div>
 
-    <script>
-    p5.disableFriendlyErrors = true; 
+  <script>
+    p5.disableFriendlyErrors = true;
 
-    let capture;
-    let handsMesh;
-    let trackingReady = false;
+    const CANVAS_W = 960;
+    const CANVAS_H = 540;
 
-    let leftHandY = 0.5;  
-    let rightHandDist = 0.1;
+    const STEM_SEGMENTS = 14;
+    const STEM_MIN = 120;
+    const STEM_MAX = 470;
+    const STEM_BASE_RADIUS = 12;
+    const STEM_TOP_RADIUS = 4;
 
-    let currentGrowth = 0.2;
-    let currentBloom = 0.2;
-    let sceneRotation = 0;
+    const PETAL_LAYERS = [
+      { count: 12, color: [236, 72, 153], reach: 1.18, length: 48, width: 22, tiltBias: 0.00, phase: 0.0 },
+      { count: 9, color: [249, 115, 22], reach: 0.82, length: 40, width: 18, tiltBias: 0.22, phase: Math.PI / 9 },
+      { count: 6, color: [250, 204, 21], reach: 0.52, length: 30, width: 15, tiltBias: 0.46, phase: Math.PI / 6 }
+    ];
+
+    const TELEMETRY = {
+      statusDot: null, pipeline: null, hands: null, fps: null,
+      stem: null, stemBar: null, bloom: null, bloomBar: null, statusText: null
+    };
+
+    const state = {
+      handsReady: false,
+      cameraReady: false,
+      trackingLive: false,
+      lastResultTime: 0,
+      handCount: 0,
+      targetStem: STEM_MIN + 40,
+      currentStem: STEM_MIN,
+      targetBloom: 0.15,
+      currentBloom: 0.05,
+      leftSeen: false,
+      rightSeen: false
+    };
+
+    let handsSolution = null;
+    let cameraFeed = null;
+    let initAttempts = 0;
+    const MAX_INIT_ATTEMPTS = 120;
 
     function setup() {
-      createCanvas(960, 540, WEBGL);
-      angleMode(DEGREES);
+      const c = createCanvas(CANVAS_W, CANVAS_H, WEBGL);
+      c.parent('frame');
+      c.canvas.style.position = 'absolute';
+      c.canvas.style.top = '0';
+      c.canvas.style.left = '0';
+      pixelDensity(Math.min(window.devicePixelRatio || 1, 2));
+      setAttributes('antialias', true);
+      angleMode(RADIANS);
+      cacheTelemetryNodes();
+      bootstrapPipeline();
+    }
 
-      capture = createCapture(VIDEO);
-      capture.size(640, 480);
-      capture.hide();
+    function cacheTelemetryNodes() {
+      TELEMETRY.statusDot = document.getElementById('statusDot');
+      TELEMETRY.pipeline = document.getElementById('valPipeline');
+      TELEMETRY.hands = document.getElementById('valHands');
+      TELEMETRY.fps = document.getElementById('valFps');
+      TELEMETRY.stem = document.getElementById('valStem');
+      TELEMETRY.stemBar = document.querySelector('#stemBar > span');
+      TELEMETRY.bloom = document.getElementById('valBloom');
+      TELEMETRY.bloomBar = document.querySelector('#bloomBar > span');
+      TELEMETRY.statusText = document.getElementById('statusText');
+    }
 
-      handsMesh = new window.Hands({
-        locateFile: (file) => `https://jsdelivr.net{file}`
+    function bootstrapPipeline() {
+      const hasHands = typeof window.Hands === 'function';
+      const hasCamera = typeof window.Camera === 'function';
+
+      if (hasHands && hasCamera) {
+        launchHandTracking();
+        return;
+      }
+
+      initAttempts += 1;
+      if (initAttempts >= MAX_INIT_ATTEMPTS) {
+        setStatus('fail', 'library');
+        TELEMETRY.statusText.innerHTML =
+          'MediaPipe libraries did not register in global memory. Check the network connection to <b>cdn.jsdelivr.net</b> and reload.';
+        return;
+      }
+
+      setStatus('wait', 'loading libs');
+      window.setTimeout(bootstrapPipeline, 120);
+    }
+
+    function launchHandTracking() {
+      setStatus('wait', 'init model');
+
+      handsSolution = new window.Hands({
+        locateFile: function (file) {
+          return 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/' + file;
+        }
       });
 
-      handsMesh.setOptions({
+      handsSolution.setOptions({
         maxNumHands: 2,
         modelComplexity: 1,
         minDetectionConfidence: 0.6,
-        minTrackingConfidence: 0.6
+        minTrackingConfidence: 0.6,
+        selfieMode: true
       });
 
-      handsMesh.onResults(handleDualHandTracking);
+      handsSolution.onResults(handleResults);
+      state.handsReady = true;
 
-      const cameraPipeline = new window.Camera(capture.elt, {
-        onFrame: async () => {
-          await handsMesh.send({ image: capture.elt });
+      const videoEl = document.querySelector('.input_video');
+      cameraFeed = new window.Camera(videoEl, {
+        onFrame: async function () {
+          if (!handsSolution) { return; }
+          try {
+            await handsSolution.send({ image: videoEl });
+          } catch (err) {
+            state.trackingLive = false;
+          }
         },
         width: 640,
         height: 480
       });
-      cameraPipeline.start();
+
+      cameraFeed.start()
+        .then(function () {
+          state.cameraReady = true;
+          setStatus('good', 'tracking');
+          TELEMETRY.statusText.innerHTML =
+            'Tracking live. <b>Left hand</b> drives the stalk, <b>right hand</b> pinch controls the bloom.';
+        })
+        .catch(function () {
+          state.cameraReady = false;
+          setStatus('fail', 'no camera');
+          TELEMETRY.statusText.innerHTML =
+            'Camera unavailable. Serve this file over <b>HTTPS</b> (or localhost) and allow camera access, then reload. The flora renders in idle mode meanwhile.';
+        });
+    }
+
+    function handleResults(results) {
+      state.lastResultTime = millis();
+      state.trackingLive = true;
+
+      const landmarkSets = results.multiHandLandmarks || false;
+      const handedness = results.multiHandedness || false;
+
+      if (!landmarkSets || landmarkSets.length === 0) {
+        state.handCount = 0;
+        state.leftSeen = false;
+        state.rightSeen = false;
+        return;
+      }
+
+      state.handCount = landmarkSets.length;
+      let sawLeft = false;
+      let sawRight = false;
+
+      for (let h = 0; h < landmarkSets.length; h++) {
+        const lm = landmarkSets[h];
+        const label = resolveLabel(handedness, h);
+
+        if (label === 'Left') {
+          sawLeft = true;
+          const wristY = lm[0].y;
+          const raised = 1 - constrain(wristY, 0.05, 0.95);
+          state.targetStem = map(raised, 0.0, 1.0, STEM_MIN, STEM_MAX, true);
+        } else {
+          sawRight = true;
+          const thumb = lm[4];
+          const index = lm[8];
+          const dx = thumb.x - index.x;
+          const dy = thumb.y - index.y;
+          const dz = (thumb.z || 0) - (index.z || 0);
+          const pinch = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          state.targetBloom = map(pinch, 0.035, 0.28, 0.0, 1.0, true);
+        }
+      }
+
+      state.leftSeen = sawLeft;
+      state.rightSeen = sawRight;
+    }
+
+    function resolveLabel(handedness, i) {
+      if (handedness && handedness[i] && handedness[i].label) {
+        return handedness[i].label;
+      }
+      return i === 0 ? 'Left' : 'Right';
     }
 
     function draw() {
-      background(12, 12, 18);
+      background(10, 10, 15);
 
-      ambientLight(80, 80, 100);
-      directionalLight(255, 240, 220, 0.5, 0.7, -1);
-      pointLight(255, 180, 100, 0, -100, 200);
-
-      let targetGrowth = map(leftHandY, 0.9, 0.1, 0.1, 1.8, true);
-      currentGrowth = lerp(currentGrowth, targetGrowth, 0.07);
-
-      let targetBloom = map(rightHandDist, 0.03, 0.22, 0.1, 1.6, true);
-      currentBloom = lerp(currentBloom, targetBloom, 0.07);
-
-      if (trackingReady) {
-        document.getElementById('loading-status').style.display = 'none';
-        document.getElementById('telemetry').style.display = 'block';
-        document.getElementById('grow-val').innerText = targetGrowth.toFixed(2);
-        document.getElementById('bloom-val').innerText = targetBloom.toFixed(2);
+      if (state.trackingLive && millis() - state.lastResultTime > 1200) {
+        state.trackingLive = false;
+        state.handCount = 0;
+        state.leftSeen = false;
+        state.rightSeen = false;
       }
 
-      push();
-      translate(0, 180, -100); 
-      
-      sceneRotation += 0.3;
-      rotateY(sceneRotation);
+      state.currentStem = lerp(state.currentStem, state.targetStem, 0.11);
+      state.currentBloom = lerp(state.currentBloom, state.targetBloom, 0.12);
 
-      const segments = 14;
-      const segmentHeight = (260 * currentGrowth) / segments;
-      
-      for (let i = 0; i < segments; i++) {
-        let sway = sin(i * 20 + sceneRotation) * 1.5;
-        translate(sway, -segmentHeight, 0);
-        rotateZ(sway * 0.05);
-        
-        fill(45, 140 - (i * 4), 85);
+      configureLighting();
+
+      push();
+      rotateX(0.18);
+      const idleSwayX = sin(frameCount * 0.006) * 6;
+      translate(idleSwayX, 0, 0);
+      drawStemAndBloom(state.currentStem, state.currentBloom);
+      pop();
+
+      updateTelemetry();
+    }
+
+    function configureLighting() {
+      ambientLight(46, 48, 62);
+      directionalLight(180, 190, 220, -0.4, 0.7, -0.6);
+      pointLight(255, 210, 150, 0, -state.currentStem - 40, 220);
+      pointLight(120, 150, 255, -300, -160, 260);
+    }
+
+    function drawStemAndBloom(stemHeight, bloom) {
+      const segH = stemHeight / STEM_SEGMENTS;
+      const t = frameCount * 0.02;
+
+      push();
+      translate(0, CANVAS_H / 2 - 60, 0);
+
+      for (let i = 0; i < STEM_SEGMENTS; i++) {
+        const progress = i / STEM_SEGMENTS;
+        const swayAngle = sin(t + i * 0.55) * 0.055 * (0.25 + progress);
+        rotateZ(swayAngle);
+        rotateX(sin(t * 0.7 + i * 0.4) * 0.02 * progress);
+
+        const rLow = lerp(STEM_BASE_RADIUS, STEM_TOP_RADIUS, progress);
+        const rHigh = lerp(STEM_BASE_RADIUS, STEM_TOP_RADIUS, (i + 1) / STEM_SEGMENTS);
+        const gShade = 60 + progress * 70;
+
+        push();
         noStroke();
-        cylinder(14 - (i * 0.6), segmentHeight + 1);
+        ambientMaterial(38, gShade + 20, 46);
+        fill(40, gShade + 30, 52);
+        translate(0, -segH / 2, 0);
+        cylinder((rLow + rHigh) / 2, segH, 16, 1, true, true);
+        pop();
+
+        translate(0, -segH, 0);
       }
 
-      translate(0, -5, 0); 
-      rotateX(75); 
-      
-      renderFlowerHead(currentBloom);
+      drawFlowerHead(bloom);
       pop();
     }
 
-    function handleDualHandTracking(results) {
-      if (!trackingReady) trackingReady = true;
+    function drawFlowerHead(bloom) {
+      push();
+      rotateX(-0.55);
 
-      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        for (let i = 0; i < results.multiHandLandmarks.length; i++) {
-          let landmarks = results.multiHandLandmarks[i];
-          let handedness = results.multiHandedness[i].label; 
-          
-          if (handedness === "Left") {
-            let thumb = landmarks[4];
-            let index = landmarks[8];
-            rightHandDist = dist(thumb.x, thumb.y, thumb.z, index.x, index.y, index.z);
-          } 
-          else if (handedness === "Right") {
-            leftHandY = landmarks[9].y; 
-          }
-        }
+      const openReach = lerp(8, 46, bloom);
+      const baseTilt = lerp(-HALF_PI * 0.82, -0.18, bloom);
+      const openScale = lerp(0.42, 1.0, bloom);
+      const spin = frameCount * 0.004 + bloom * 0.6;
+
+      for (let l = 0; l < PETAL_LAYERS.length; l++) {
+        const layer = PETAL_LAYERS[l];
+        drawPetalLayer(
+          layer.count,
+          openReach * layer.reach,
+          layer.length * openScale,
+          layer.width * openScale,
+          baseTilt + layer.tiltBias,
+          layer.color,
+          layer.phase + spin
+        );
+      }
+
+      push();
+      noStroke();
+      specularMaterial(255, 214, 120);
+      shininess(64);
+      fill(190, 150, 60);
+      sphere(lerp(6, 12, bloom), 26, 20);
+      pop();
+
+      pop();
+    }
+
+    function drawPetalLayer(count, reach, petalLen, petalWid, tilt, col, phase) {
+      for (let i = 0; i < count; i++) {
+        push();
+        rotateY((i / count) * TWO_PI + phase);
+        rotateX(tilt);
+        translate(0, -reach, 0);
+        noStroke();
+        ambientMaterial(col[0] * 0.55, col[1] * 0.55, col[2] * 0.55);
+        fill(col[0], col[1], col[2]);
+        push();
+        translate(0, -petalLen * 0.32, 0);
+        ellipse(0, 0, petalWid, petalLen, 20);
+        pop();
+        pop();
       }
     }
 
-    function renderFlowerHead(bloomScale) {
-      // Layer 1
-      fill(255, 70, 110);
-      push();
-      rotateZ(0);
-      let radius1 = 140 * (bloomScale * 0.8 + 0.2);
-      for (let i = 0; i < 12; i++) {
-        push();
-        rotateZ((360 / 12) * i);
-        rotateX(map(bloomScale, 0.1, 1.6, -45, 25));
-        ellipse(0, radius1 * 0.4, radius1 * 0.28, radius1 * 0.65);
-        pop();
-      }
-      pop();
+    function updateTelemetry() {
+      const stemPct = Math.round(map(state.currentStem, STEM_MIN, STEM_MAX, 0, 100, true));
+      const bloomPct = Math.round(state.currentBloom * 100);
+      const fpsVal = Math.round(frameRate());
 
-      // Layer 2
-      fill(255, 140, 60);
-      push();
-      rotateZ(20);
-      let radius2 = 90 * (bloomScale * 0.8 + 0.2);
-      for (let i = 0; i < 9; i++) {
-        push();
-        rotateZ((360 / 9) * i);
-        rotateX(map(bloomScale, 0.1, 1.6, -45, 25));
-        ellipse(0, radius2 * 0.4, radius2 * 0.28, radius2 * 0.65);
-        pop();
-      }
-      pop();
+      TELEMETRY.hands.textContent = state.handCount + ' / 2';
+      TELEMETRY.fps.textContent = fpsVal + ' fps';
+      TELEMETRY.stem.textContent = stemPct + '%';
+      TELEMETRY.stemBar.style.width = stemPct + '%';
+      TELEMETRY.bloom.textContent = bloomPct + '%';
+      TELEMETRY.bloomBar.style.width = bloomPct + '%';
 
-      // Layer 3
-      fill(255, 210, 50);
-      push();
-      rotateZ(40);
-      let radius3 = 50 * (bloomScale * 0.8 + 0.2);
-      for (let i = 0; i < 6; i++) {
-        push();
-        rotateZ((360 / 6) * i);
-        rotateX(map(bloomScale, 0.1, 1.6, -45, 25));
-        ellipse(0, radius3 * 0.4, radius3 * 0.28, radius3 * 0.65);
-        pop();
+      if (state.cameraReady && state.trackingLive) {
+        const roles = [];
+        if (state.leftSeen) { roles.push('L\u00b7stalk'); }
+        if (state.rightSeen) { roles.push('R\u00b7bloom'); }
+        TELEMETRY.pipeline.textContent = roles.length > 0 ? roles.join(' ') : 'searching';
+      } else if (state.cameraReady) {
+        TELEMETRY.pipeline.textContent = 'idle';
       }
-      pop();
-
-      // Core Pistil
-      push();
-      translate(0, 0, 5);
-      fill(255, 230, 40);
-      specularMaterial(255);
-      shininess(30);
-      sphere(18 * (bloomScale * 0.5 + 0.5));
-      pop();
     }
-    </script>
+
+    function setStatus(kind, text) {
+      const colors = { good: 'var(--good)', wait: 'var(--wait)', fail: 'var(--fail)' };
+      if (TELEMETRY.statusDot) {
+        TELEMETRY.statusDot.style.background = colors[kind] || 'var(--wait)';
+        TELEMETRY.statusDot.style.color = colors[kind] || 'var(--wait)';
+      }
+      if (TELEMETRY.pipeline) {
+        TELEMETRY.pipeline.textContent = text;
+      }
+    }
+  </script>
 </body>
 </html>
