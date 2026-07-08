@@ -3,24 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kinetic Bloom — Dual-Hand Procedural Flora</title>
+  <title>Kinetic Bloom — Neon Hand-Grown Bouquet</title>
   <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
   <style>
-    :root {
-      --bg: #0a0a0f;
-      --panel: rgba(16, 18, 28, 0.72);
-      --stroke: rgba(120, 140, 200, 0.22);
-      --accent: #6ad0ff;
-      --accent-warm: #ff8ab5;
-      --text: #d7dcf0;
-      --muted: #737a94;
-      --good: #58e08a;
-      --wait: #f0c65a;
-      --fail: #ff6f7d;
-    }
-
     * { box-sizing: border-box; }
 
     html, body {
@@ -28,10 +15,9 @@
       padding: 0;
       width: 100%;
       height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
+      background: #060608;
       overflow: hidden;
+      font-family: "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
     }
 
     #stage {
@@ -41,25 +27,24 @@
       align-items: center;
       justify-content: center;
       background:
-        radial-gradient(1200px 600px at 50% 8%, rgba(50, 60, 110, 0.18), transparent 60%),
-        var(--bg);
+        radial-gradient(900px 500px at 50% 30%, rgba(70, 40, 12, 0.35), transparent 65%),
+        #060608;
     }
 
     #frame {
       position: relative;
-      width: 960px;
-      height: 540px;
-      max-width: 96vw;
-      border-radius: 14px;
+      line-height: 0;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
+      border-radius: 10px;
       overflow: hidden;
-      box-shadow:
-        0 0 0 1px rgba(120, 140, 200, 0.14),
-        0 30px 90px rgba(0, 0, 0, 0.6);
     }
 
     #frame canvas {
       display: block;
-      border-radius: 14px;
+      max-width: 96vw;
+      max-height: 96vh;
+      width: auto;
+      height: auto;
     }
 
     .input_video {
@@ -68,162 +53,49 @@
       height: 2px;
       opacity: 0;
       pointer-events: none;
-      top: -10px;
-      left: -10px;
+      top: -20px;
+      left: -20px;
     }
-
-    #telemetry {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      width: 268px;
-      padding: 14px 16px 16px;
-      background: var(--panel);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      user-select: none;
-      pointer-events: none;
-    }
-
-    .tel-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-    }
-
-    .tel-title {
-      font-size: 12px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: var(--accent);
-    }
-
-    .tel-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: var(--wait);
-      box-shadow: 0 0 10px currentColor;
-      transition: background 0.3s ease;
-    }
-
-    .tel-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 11px;
-      letter-spacing: 0.04em;
-      padding: 5px 0;
-    }
-
-    .tel-label { color: var(--muted); text-transform: uppercase; }
-    .tel-value { color: var(--text); font-variant-numeric: tabular-nums; }
-
-    .bar {
-      position: relative;
-      height: 6px;
-      margin-top: 4px;
-      margin-bottom: 6px;
-      background: rgba(120, 140, 200, 0.12);
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .bar > span {
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 0%;
-      border-radius: 4px;
-      transition: width 0.08s linear;
-    }
-
-    #stemBar > span { background: linear-gradient(90deg, #4f8bff, var(--accent)); }
-    #bloomBar > span { background: linear-gradient(90deg, #ff6f9c, var(--accent-warm)); }
-
-    .tel-status {
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid var(--stroke);
-      font-size: 10.5px;
-      line-height: 1.5;
-      color: var(--muted);
-    }
-
-    .tel-status b { color: var(--text); font-weight: 600; }
-
-    #legend {
-      position: absolute;
-      bottom: 16px;
-      right: 16px;
-      padding: 12px 14px;
-      background: var(--panel);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      font-size: 10.5px;
-      line-height: 1.7;
-      color: var(--muted);
-      user-select: none;
-      pointer-events: none;
-    }
-
-    #legend b { color: var(--accent); }
-    #legend .warm { color: var(--accent-warm); }
   </style>
 </head>
 <body>
   <div id="stage">
     <div id="frame">
       <video class="input_video" playsinline></video>
-      <div id="telemetry">
-        <div class="tel-head">
-          <span class="tel-title">Kinetic Bloom</span>
-          <span class="tel-dot" id="statusDot"></span>
-        </div>
-        <div class="tel-row"><span class="tel-label">Pipeline</span><span class="tel-value" id="valPipeline">booting</span></div>
-        <div class="tel-row"><span class="tel-label">Hands</span><span class="tel-value" id="valHands">0 / 2</span></div>
-        <div class="tel-row"><span class="tel-label">Frame Rate</span><span class="tel-value" id="valFps">0 fps</span></div>
-        <div class="tel-row"><span class="tel-label">Stalk Elongation</span><span class="tel-value" id="valStem">0%</span></div>
-        <div class="bar" id="stemBar"><span></span></div>
-        <div class="tel-row"><span class="tel-label">Petal Bloom</span><span class="tel-value" id="valBloom">0%</span></div>
-        <div class="bar" id="bloomBar"><span></span></div>
-        <div class="tel-status" id="statusText">Requesting camera access. Grant the permission prompt to begin tracking.</div>
-      </div>
-      <div id="legend">
-        <div><b>Left hand</b> · raise / lower &rarr; stalk height</div>
-        <div><span class="warm">Right hand</span> · pinch thumb + index &rarr; petal bloom</div>
-      </div>
     </div>
   </div>
 
   <script>
     p5.disableFriendlyErrors = true;
 
-    const CANVAS_W = 960;
-    const CANVAS_H = 540;
+    const W = 720;
+    const VIDEO_H = 405;
+    const ART_Y = VIDEO_H;
+    const ART_H = 435;
+    const H = VIDEO_H + ART_H;
 
-    const STEM_SEGMENTS = 14;
-    const STEM_MIN = 120;
-    const STEM_MAX = 470;
-    const STEM_BASE_RADIUS = 12;
-    const STEM_TOP_RADIUS = 4;
-
-    const PETAL_LAYERS = [
-      { count: 12, color: [236, 72, 153], reach: 1.18, length: 48, width: 22, tiltBias: 0.00, phase: 0.0 },
-      { count: 9, color: [249, 115, 22], reach: 0.82, length: 40, width: 18, tiltBias: 0.22, phase: Math.PI / 9 },
-      { count: 6, color: [250, 204, 21], reach: 0.52, length: 30, width: 15, tiltBias: 0.46, phase: Math.PI / 6 }
+    const HAND_CONNECTIONS = [
+      [0, 1], [1, 2], [2, 3], [3, 4],
+      [0, 5], [5, 6], [6, 7], [7, 8],
+      [5, 9], [9, 10], [10, 11], [11, 12],
+      [9, 13], [13, 14], [14, 15], [15, 16],
+      [13, 17], [17, 18], [18, 19], [19, 20],
+      [0, 17], [0, 9]
     ];
 
-    const TELEMETRY = {
-      statusDot: null, pipeline: null, hands: null, fps: null,
-      stem: null, stemBar: null, bloom: null, bloomBar: null, statusText: null
+    const PAL = {
+      gold: { fill: [255, 214, 62], edge: [255, 246, 176] },
+      amber: { fill: [255, 158, 40], edge: [255, 208, 118] },
+      ember: { fill: [240, 92, 30], edge: [255, 152, 84] }
     };
+
+    const BOUQUET = [
+      { ang: -0.86, dist: 322, size: 52, pal: 'ember', spin: -0.05, z: 0 },
+      { ang: 0.82, dist: 318, size: 50, pal: 'amber', spin: 0.06, z: 1 },
+      { ang: -0.44, dist: 292, size: 70, pal: 'gold', spin: -0.08, z: 2 },
+      { ang: 0.46, dist: 286, size: 66, pal: 'amber', spin: 0.09, z: 3 },
+      { ang: 0.02, dist: 176, size: 102, pal: 'gold', spin: 0.11, z: 4 }
+    ];
 
     const state = {
       handsReady: false,
@@ -231,42 +103,28 @@
       trackingLive: false,
       lastResultTime: 0,
       handCount: 0,
-      targetStem: STEM_MIN + 40,
-      currentStem: STEM_MIN,
-      targetBloom: 0.15,
-      currentBloom: 0.05,
-      leftSeen: false,
-      rightSeen: false
+      frameHands: [],
+      targetGrow: 0.5,
+      currentGrow: 0.5,
+      targetBloom: 0.5,
+      currentBloom: 0.5,
+      statusKind: 'wait',
+      statusText: 'booting pipeline'
     };
 
     let handsSolution = null;
     let cameraFeed = null;
+    let videoEl = null;
     let initAttempts = 0;
     const MAX_INIT_ATTEMPTS = 120;
 
     function setup() {
-      const c = createCanvas(CANVAS_W, CANVAS_H, WEBGL);
+      const c = createCanvas(W, H);
       c.parent('frame');
-      c.canvas.style.position = 'absolute';
-      c.canvas.style.top = '0';
-      c.canvas.style.left = '0';
-      pixelDensity(Math.min(window.devicePixelRatio || 1, 2));
-      setAttributes('antialias', true);
-      angleMode(RADIANS);
-      cacheTelemetryNodes();
+      pixelDensity(1);
+      textFont('monospace');
+      videoEl = document.querySelector('.input_video');
       bootstrapPipeline();
-    }
-
-    function cacheTelemetryNodes() {
-      TELEMETRY.statusDot = document.getElementById('statusDot');
-      TELEMETRY.pipeline = document.getElementById('valPipeline');
-      TELEMETRY.hands = document.getElementById('valHands');
-      TELEMETRY.fps = document.getElementById('valFps');
-      TELEMETRY.stem = document.getElementById('valStem');
-      TELEMETRY.stemBar = document.querySelector('#stemBar > span');
-      TELEMETRY.bloom = document.getElementById('valBloom');
-      TELEMETRY.bloomBar = document.querySelector('#bloomBar > span');
-      TELEMETRY.statusText = document.getElementById('statusText');
     }
 
     function bootstrapPipeline() {
@@ -280,18 +138,16 @@
 
       initAttempts += 1;
       if (initAttempts >= MAX_INIT_ATTEMPTS) {
-        setStatus('fail', 'library');
-        TELEMETRY.statusText.innerHTML =
-          'MediaPipe libraries did not register in global memory. Check the network connection to <b>cdn.jsdelivr.net</b> and reload.';
+        state.statusKind = 'fail';
+        state.statusText = 'library load failed';
         return;
       }
-
-      setStatus('wait', 'loading libs');
+      state.statusText = 'loading libraries';
       window.setTimeout(bootstrapPipeline, 120);
     }
 
     function launchHandTracking() {
-      setStatus('wait', 'init model');
+      state.statusText = 'initializing model';
 
       handsSolution = new window.Hands({
         locateFile: function (file) {
@@ -304,13 +160,12 @@
         modelComplexity: 1,
         minDetectionConfidence: 0.6,
         minTrackingConfidence: 0.6,
-        selfieMode: true
+        selfieMode: false
       });
 
       handsSolution.onResults(handleResults);
       state.handsReady = true;
 
-      const videoEl = document.querySelector('.input_video');
       cameraFeed = new window.Camera(videoEl, {
         onFrame: async function () {
           if (!handsSolution) { return; }
@@ -327,15 +182,13 @@
       cameraFeed.start()
         .then(function () {
           state.cameraReady = true;
-          setStatus('good', 'tracking');
-          TELEMETRY.statusText.innerHTML =
-            'Tracking live. <b>Left hand</b> drives the stalk, <b>right hand</b> pinch controls the bloom.';
+          state.statusKind = 'good';
+          state.statusText = 'tracking live';
         })
         .catch(function () {
           state.cameraReady = false;
-          setStatus('fail', 'no camera');
-          TELEMETRY.statusText.innerHTML =
-            'Camera unavailable. Serve this file over <b>HTTPS</b> (or localhost) and allow camera access, then reload. The flora renders in idle mode meanwhile.';
+          state.statusKind = 'fail';
+          state.statusText = 'camera blocked - use https';
         });
     }
 
@@ -343,197 +196,374 @@
       state.lastResultTime = millis();
       state.trackingLive = true;
 
-      const landmarkSets = results.multiHandLandmarks || false;
-      const handedness = results.multiHandedness || false;
-
-      if (!landmarkSets || landmarkSets.length === 0) {
+      const sets = results.multiHandLandmarks || false;
+      if (!sets || sets.length === 0) {
         state.handCount = 0;
-        state.leftSeen = false;
-        state.rightSeen = false;
+        state.frameHands = [];
         return;
       }
 
-      state.handCount = landmarkSets.length;
-      let sawLeft = false;
-      let sawRight = false;
+      state.handCount = sets.length;
 
-      for (let h = 0; h < landmarkSets.length; h++) {
-        const lm = landmarkSets[h];
-        const label = resolveLabel(handedness, h);
+      const collected = [];
+      for (let h = 0; h < sets.length; h++) {
+        const lm = sets[h];
+        const mwx = 1 - lm[0].x;
+        collected.push({ lm: lm, mwx: mwx });
+      }
+      collected.sort(function (a, b) { return a.mwx - b.mwx; });
 
-        if (label === 'Left') {
-          sawLeft = true;
-          const wristY = lm[0].y;
-          const raised = 1 - constrain(wristY, 0.05, 0.95);
-          state.targetStem = map(raised, 0.0, 1.0, STEM_MIN, STEM_MAX, true);
+      let growHand = null;
+      let bloomHand = null;
+
+      if (collected.length >= 2) {
+        growHand = collected[0];
+        bloomHand = collected[collected.length - 1];
+        growHand.role = 'grow';
+        bloomHand.role = 'bloom';
+      } else {
+        const only = collected[0];
+        if (only.mwx < 0.5) {
+          only.role = 'grow';
+          growHand = only;
         } else {
-          sawRight = true;
-          const thumb = lm[4];
-          const index = lm[8];
-          const dx = thumb.x - index.x;
-          const dy = thumb.y - index.y;
-          const dz = (thumb.z || 0) - (index.z || 0);
-          const pinch = Math.sqrt(dx * dx + dy * dy + dz * dz);
-          state.targetBloom = map(pinch, 0.035, 0.28, 0.0, 1.0, true);
+          only.role = 'bloom';
+          bloomHand = only;
         }
       }
 
-      state.leftSeen = sawLeft;
-      state.rightSeen = sawRight;
-    }
-
-    function resolveLabel(handedness, i) {
-      if (handedness && handedness[i] && handedness[i].label) {
-        return handedness[i].label;
+      if (growHand) {
+        const wristY = growHand.lm[0].y;
+        state.targetGrow = constrain(map(wristY, 0.85, 0.15, 0, 1), 0, 1);
+        growHand.value = state.targetGrow;
       }
-      return i === 0 ? 'Left' : 'Right';
+      if (bloomHand) {
+        const thumb = bloomHand.lm[4];
+        const index = bloomHand.lm[8];
+        const dx = thumb.x - index.x;
+        const dy = thumb.y - index.y;
+        const dz = (thumb.z || 0) - (index.z || 0);
+        const pinch = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        state.targetBloom = constrain(map(pinch, 0.04, 0.25, 0, 1), 0, 1);
+        bloomHand.value = state.targetBloom;
+      }
+
+      state.frameHands = collected;
     }
 
     function draw() {
-      background(10, 10, 15);
+      background(6, 6, 8);
 
       if (state.trackingLive && millis() - state.lastResultTime > 1200) {
         state.trackingLive = false;
         state.handCount = 0;
-        state.leftSeen = false;
-        state.rightSeen = false;
+        state.frameHands = [];
       }
 
-      state.currentStem = lerp(state.currentStem, state.targetStem, 0.11);
+      state.currentGrow = lerp(state.currentGrow, state.targetGrow, 0.10);
       state.currentBloom = lerp(state.currentBloom, state.targetBloom, 0.12);
 
-      configureLighting();
+      drawVideoPanel();
+      drawHandOverlays();
+      drawArtBackdrop();
+      drawBouquet();
+      drawPictureInPicture();
+      drawStatusPill();
+    }
+
+    function drawVideoPanel() {
+      const ctx = drawingContext;
+      noStroke();
+      fill(12, 12, 16);
+      rect(0, 0, W, VIDEO_H);
+
+      if (videoEl && videoEl.readyState >= 2) {
+        ctx.save();
+        ctx.translate(W, 0);
+        ctx.scale(-1, 1);
+        try {
+          ctx.drawImage(videoEl, 0, 0, W, VIDEO_H);
+        } catch (err) {
+          state.trackingLive = false;
+        }
+        ctx.restore();
+        ctx.fillStyle = 'rgba(6,6,10,0.18)';
+        ctx.fillRect(0, 0, W, VIDEO_H);
+      } else {
+        fill(150, 150, 170, 180);
+        textAlign(CENTER, CENTER);
+        textSize(14);
+        text('awaiting camera feed', W / 2, VIDEO_H / 2);
+        textAlign(LEFT, BASELINE);
+      }
+
+      noFill();
+      stroke(255, 180, 40, 40);
+      strokeWeight(2);
+      line(0, VIDEO_H, W, VIDEO_H);
+      noStroke();
+    }
+
+    function topX(nx) { return (1 - nx) * W; }
+    function topY(ny) { return ny * VIDEO_H; }
+
+    function drawHandOverlays() {
+      if (!state.frameHands || state.frameHands.length === 0) { return; }
+      const ctx = drawingContext;
 
       push();
-      rotateX(0.18);
-      const idleSwayX = sin(frameCount * 0.006) * 6;
-      translate(idleSwayX, 0, 0);
-      drawStemAndBloom(state.currentStem, state.currentBloom);
+      blendMode(ADD);
+      for (let h = 0; h < state.frameHands.length; h++) {
+        const hand = state.frameHands[h];
+        const lm = hand.lm;
+
+        ctx.shadowBlur = 16;
+        ctx.shadowColor = 'rgba(255, 214, 40, 0.9)';
+        stroke(255, 220, 46, 210);
+        strokeWeight(3);
+        for (let k = 0; k < HAND_CONNECTIONS.length; k++) {
+          const a = lm[HAND_CONNECTIONS[k][0]];
+          const b = lm[HAND_CONNECTIONS[k][1]];
+          line(topX(a.x), topY(a.y), topX(b.x), topY(b.y));
+        }
+
+        const t4 = lm[4];
+        const t8 = lm[8];
+        stroke(255, 244, 150, 235);
+        strokeWeight(2);
+        line(topX(t4.x), topY(t4.y), topX(t8.x), topY(t8.y));
+
+        ctx.shadowBlur = 0;
+        noStroke();
+        for (let p = 0; p < lm.length; p++) {
+          fill(255, 236, 120, 210);
+          circle(topX(lm[p].x), topY(lm[p].y), 5);
+        }
+
+        drawHandLabel(hand);
+      }
+      blendMode(BLEND);
       pop();
-
-      updateTelemetry();
     }
 
-    function configureLighting() {
-      ambientLight(46, 48, 62);
-      directionalLight(180, 190, 220, -0.4, 0.7, -0.6);
-      pointLight(255, 210, 150, 0, -state.currentStem - 40, 220);
-      pointLight(120, 150, 255, -300, -160, 260);
+    function drawHandLabel(hand) {
+      const lm = hand.lm;
+      let minY = 1;
+      let sumX = 0;
+      for (let p = 0; p < lm.length; p++) {
+        if (lm[p].y < minY) { minY = lm[p].y; }
+        sumX += lm[p].x;
+      }
+      const cx = topX(sumX / lm.length);
+      const cy = topY(minY) - 16;
+
+      const isGrow = hand.role === 'grow';
+      const label = isGrow ? 'Grow' : 'Bloom';
+      const val = (typeof hand.value === 'number') ? hand.value : 0;
+
+      const ctx = drawingContext;
+      ctx.shadowBlur = 14;
+      ctx.shadowColor = 'rgba(255, 208, 40, 0.85)';
+      fill(255, 226, 90, 240);
+      noStroke();
+      textAlign(CENTER, BASELINE);
+      textStyle(BOLD);
+      textSize(22);
+      text(label + ': ' + nf(val, 1, 2), cx, cy);
+      textStyle(NORMAL);
+      textAlign(LEFT, BASELINE);
+      ctx.shadowBlur = 0;
     }
 
-    function drawStemAndBloom(stemHeight, bloom) {
-      const segH = stemHeight / STEM_SEGMENTS;
+    function drawArtBackdrop() {
+      const ctx = drawingContext;
+      const baseY = ART_Y + ART_H - 30;
+
+      let g = ctx.createLinearGradient(0, ART_Y, 0, H);
+      g.addColorStop(0, 'rgba(20, 12, 8, 1)');
+      g.addColorStop(1, 'rgba(6, 6, 9, 1)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, ART_Y, W, ART_H);
+
+      push();
+      blendMode(ADD);
+      const halo = lerp(150, 260, state.currentBloom);
+      glowBlob(W / 2, baseY - 150 * state.currentGrow - 80, halo * 1.6, 255, 120, 24, 0.20);
+      glowBlob(W / 2, baseY - 90, halo * 1.1, 255, 84, 20, 0.14);
+      blendMode(BLEND);
+      pop();
+    }
+
+    function glowBlob(x, y, r, cr, cg, cb, a) {
+      const ctx = drawingContext;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, 'rgba(' + cr + ',' + cg + ',' + cb + ',' + a + ')');
+      g.addColorStop(1, 'rgba(' + cr + ',' + cg + ',' + cb + ',0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, TWO_PI);
+      ctx.fill();
+    }
+
+    function drawBouquet() {
+      const baseX = W / 2;
+      const baseY = ART_Y + ART_H - 24;
+      const gs = lerp(0.5, 1.0, state.currentGrow);
       const t = frameCount * 0.02;
 
-      push();
-      translate(0, CANVAS_H / 2 - 60, 0);
+      const slots = BOUQUET.slice().sort(function (a, b) { return a.z - b.z; });
 
-      for (let i = 0; i < STEM_SEGMENTS; i++) {
-        const progress = i / STEM_SEGMENTS;
-        const swayAngle = sin(t + i * 0.55) * 0.055 * (0.25 + progress);
-        rotateZ(swayAngle);
-        rotateX(sin(t * 0.7 + i * 0.4) * 0.02 * progress);
-
-        const rLow = lerp(STEM_BASE_RADIUS, STEM_TOP_RADIUS, progress);
-        const rHigh = lerp(STEM_BASE_RADIUS, STEM_TOP_RADIUS, (i + 1) / STEM_SEGMENTS);
-        const gShade = 60 + progress * 70;
-
-        push();
-        noStroke();
-        ambientMaterial(38, gShade + 20, 46);
-        fill(40, gShade + 30, 52);
-        translate(0, -segH / 2, 0);
-        cylinder((rLow + rHigh) / 2, segH, 16, 1, true, true);
-        pop();
-
-        translate(0, -segH, 0);
+      const centers = [];
+      for (let i = 0; i < slots.length; i++) {
+        const s = slots[i];
+        const reach = s.dist * gs;
+        const sway = sin(t * 0.8 + i * 1.3) * 10 * state.currentBloom;
+        const dirX = Math.sin(s.ang);
+        const dirY = -Math.cos(s.ang);
+        const cx = baseX + dirX * reach + sway;
+        const cy = baseY + dirY * reach;
+        centers.push({ x: cx, y: cy, s: s });
       }
 
-      drawFlowerHead(bloom);
+      for (let i = 0; i < centers.length; i++) {
+        drawStem(baseX, baseY, centers[i].x, centers[i].y, centers[i].s.ang);
+      }
+
+      for (let i = 0; i < centers.length; i++) {
+        const c = centers[i];
+        drawDaisy(c.x, c.y, c.s.size * lerp(0.8, 1.0, gs), state.currentBloom, PAL[c.s.pal], t, c.s.spin);
+      }
+    }
+
+    function drawStem(bx, by, cx, cy, ang) {
+      const ctx = drawingContext;
+      const midX = (bx + cx) / 2 + Math.sin(ang) * 22;
+      const midY = (by + cy) / 2;
+      push();
+      blendMode(ADD);
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = 'rgba(220, 220, 200, 0.5)';
+      noFill();
+      stroke(228, 224, 206, 190);
+      strokeWeight(2);
+      beginShape();
+      vertex(bx, by);
+      quadraticVertex(midX, midY, cx, cy);
+      endShape();
+      ctx.shadowBlur = 0;
+      blendMode(BLEND);
       pop();
     }
 
-    function drawFlowerHead(bloom) {
+    function drawDaisy(cx, cy, size, bloom, palette, t, spin) {
       push();
-      rotateX(-0.55);
+      blendMode(ADD);
 
-      const openReach = lerp(8, 46, bloom);
-      const baseTilt = lerp(-HALF_PI * 0.82, -0.18, bloom);
-      const openScale = lerp(0.42, 1.0, bloom);
-      const spin = frameCount * 0.004 + bloom * 0.6;
+      glowBlob(cx, cy, size * 1.9, palette.fill[0], palette.fill[1] * 0.6, palette.fill[2] * 0.3, 0.16);
 
-      for (let l = 0; l < PETAL_LAYERS.length; l++) {
-        const layer = PETAL_LAYERS[l];
-        drawPetalLayer(
-          layer.count,
-          openReach * layer.reach,
-          layer.length * openScale,
-          layer.width * openScale,
-          baseTilt + layer.tiltBias,
-          layer.color,
-          layer.phase + spin
-        );
-      }
+      const petals = 22;
+      const innerR = size * 0.16;
+      const rot = t * spin;
 
-      push();
-      noStroke();
-      specularMaterial(255, 214, 120);
-      shininess(64);
-      fill(190, 150, 60);
-      sphere(lerp(6, 12, bloom), 26, 20);
-      pop();
+      drawPetalRing(cx, cy, petals, innerR, size * lerp(0.72, 1.12, bloom), size * 0.10, rot, palette, 0.16, 130);
+      drawPetalRing(cx, cy, petals, innerR * 0.7, size * lerp(0.42, 0.70, bloom), size * 0.075, rot + PI / petals, palette, 0.20, 150);
 
+      const ctx = drawingContext;
+      const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.34);
+      core.addColorStop(0, 'rgba(255, 252, 210, 0.95)');
+      core.addColorStop(0.5, 'rgba(255, 206, 90, 0.55)');
+      core.addColorStop(1, 'rgba(255, 150, 40, 0)');
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.arc(cx, cy, size * 0.34, 0, TWO_PI);
+      ctx.fill();
+
+      blendMode(BLEND);
       pop();
     }
 
-    function drawPetalLayer(count, reach, petalLen, petalWid, tilt, col, phase) {
+    function drawPetalRing(cx, cy, count, innerR, petalLen, petalWid, rot, palette, fillA, edgeA) {
       for (let i = 0; i < count; i++) {
-        push();
-        rotateY((i / count) * TWO_PI + phase);
-        rotateX(tilt);
-        translate(0, -reach, 0);
-        noStroke();
-        ambientMaterial(col[0] * 0.55, col[1] * 0.55, col[2] * 0.55);
-        fill(col[0], col[1], col[2]);
-        push();
-        translate(0, -petalLen * 0.32, 0);
-        ellipse(0, 0, petalWid, petalLen, 20);
-        pop();
-        pop();
+        const a = rot + (i / count) * TWO_PI;
+        const dx = Math.cos(a);
+        const dy = Math.sin(a);
+        const px = -dy;
+        const py = dx;
+
+        const baseX = cx + dx * innerR;
+        const baseY = cy + dy * innerR;
+        const tipX = cx + dx * petalLen;
+        const tipY = cy + dy * petalLen;
+        const blX = baseX + px * petalWid;
+        const blY = baseY + py * petalWid;
+        const brX = baseX - px * petalWid;
+        const brY = baseY - py * petalWid;
+
+        fill(palette.fill[0], palette.fill[1], palette.fill[2], fillA * 255);
+        stroke(palette.edge[0], palette.edge[1], palette.edge[2], edgeA);
+        strokeWeight(1.2);
+        beginShape();
+        vertex(blX, blY);
+        vertex(tipX, tipY);
+        vertex(brX, brY);
+        endShape(CLOSE);
       }
     }
 
-    function updateTelemetry() {
-      const stemPct = Math.round(map(state.currentStem, STEM_MIN, STEM_MAX, 0, 100, true));
-      const bloomPct = Math.round(state.currentBloom * 100);
-      const fpsVal = Math.round(frameRate());
+    function drawPictureInPicture() {
+      if (!videoEl || videoEl.readyState < 2) { return; }
+      const pw = 150;
+      const ph = 112;
+      const pad = 16;
+      const px = W - pw - pad;
+      const py = H - ph - pad;
+      const ctx = drawingContext;
 
-      TELEMETRY.hands.textContent = state.handCount + ' / 2';
-      TELEMETRY.fps.textContent = fpsVal + ' fps';
-      TELEMETRY.stem.textContent = stemPct + '%';
-      TELEMETRY.stemBar.style.width = stemPct + '%';
-      TELEMETRY.bloom.textContent = bloomPct + '%';
-      TELEMETRY.bloomBar.style.width = bloomPct + '%';
-
-      if (state.cameraReady && state.trackingLive) {
-        const roles = [];
-        if (state.leftSeen) { roles.push('L\u00b7stalk'); }
-        if (state.rightSeen) { roles.push('R\u00b7bloom'); }
-        TELEMETRY.pipeline.textContent = roles.length > 0 ? roles.join(' ') : 'searching';
-      } else if (state.cameraReady) {
-        TELEMETRY.pipeline.textContent = 'idle';
+      ctx.save();
+      ctx.translate(px + pw, py);
+      ctx.scale(-1, 1);
+      try {
+        ctx.drawImage(videoEl, 0, 0, pw, ph);
+      } catch (err) {
+        ctx.restore();
+        return;
       }
+      ctx.restore();
+
+      noFill();
+      stroke(255, 200, 60, 150);
+      strokeWeight(1.5);
+      rect(px, py, pw, ph);
+      noStroke();
+
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = 'rgba(255, 208, 40, 0.8)';
+      fill(255, 226, 90, 230);
+      textSize(11);
+      textStyle(BOLD);
+      text('LIVE', px + 8, py + 16);
+      textStyle(NORMAL);
+      ctx.shadowBlur = 0;
     }
 
-    function setStatus(kind, text) {
-      const colors = { good: 'var(--good)', wait: 'var(--wait)', fail: 'var(--fail)' };
-      if (TELEMETRY.statusDot) {
-        TELEMETRY.statusDot.style.background = colors[kind] || 'var(--wait)';
-        TELEMETRY.statusDot.style.color = colors[kind] || 'var(--wait)';
-      }
-      if (TELEMETRY.pipeline) {
-        TELEMETRY.pipeline.textContent = text;
-      }
+    function drawStatusPill() {
+      const cols = {
+        good: [88, 224, 138],
+        wait: [240, 198, 90],
+        fail: [255, 111, 125]
+      };
+      const col = cols[state.statusKind] || cols.wait;
+
+      noStroke();
+      fill(12, 12, 18, 190);
+      rect(14, 14, 152, 26, 8);
+      fill(col[0], col[1], col[2]);
+      circle(28, 27, 8);
+      fill(220, 224, 240, 230);
+      textSize(10.5);
+      textAlign(LEFT, CENTER);
+      text(state.statusText, 42, 28);
+      textAlign(LEFT, BASELINE);
     }
   </script>
 </body>
