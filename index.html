@@ -35,7 +35,6 @@
         .status { font-weight: bold; color: #4caf50; }
         .data-label { color: #ffb74d; }
     </style>
-    <!-- RESTORED: Explicit absolute library CDN sources -->
     <script src="https://cloudflare.com"></script>
     <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
     <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
@@ -73,7 +72,6 @@
       capture.size(640, 480);
       capture.hide();
 
-      // RESTORED: Complete mapping parameter logic
       handsMesh = new window.Hands({
         locateFile: (file) => `https://jsdelivr.net{file}`
       });
@@ -164,33 +162,49 @@
     }
 
     function renderFlowerHead(bloomScale) {
-      let colors = [color(255, 70, 110), color(255, 140, 60), color(255, 210, 50)];
-      
-      // FIXED: Populated functional dimensions into empty target matrices
-      let sizes =;
-      let counts =;
-
-      for (let l = 0; l < 3; l++) {
-        fill(colors[l]);
+      // Layer 1
+      fill(255, 70, 110);
+      push();
+      rotateZ(0);
+      let radius1 = 140 * (bloomScale * 0.8 + 0.2);
+      for (let i = 0; i < 12; i++) {
         push();
-        rotateZ(l * 20); 
-        
-        let count = counts[l];
-        let radius = sizes[l] * (bloomScale * 0.8 + 0.2);
-        
-        for (let i = 0; i < count; i++) {
-          push();
-          rotateZ((360 / count) * i);
-          
-          let bendAngle = map(bloomScale, 0.1, 1.6, -45, 25);
-          rotateX(bendAngle);
-          
-          ellipse(0, radius * 0.4, radius * 0.28, radius * 0.65);
-          pop();
-        }
+        rotateZ((360 / 12) * i);
+        rotateX(map(bloomScale, 0.1, 1.6, -45, 25));
+        ellipse(0, radius1 * 0.4, radius1 * 0.28, radius1 * 0.65);
         pop();
       }
+      pop();
 
+      // Layer 2
+      fill(255, 140, 60);
+      push();
+      rotateZ(20);
+      let radius2 = 90 * (bloomScale * 0.8 + 0.2);
+      for (let i = 0; i < 9; i++) {
+        push();
+        rotateZ((360 / 9) * i);
+        rotateX(map(bloomScale, 0.1, 1.6, -45, 25));
+        ellipse(0, radius2 * 0.4, radius2 * 0.28, radius2 * 0.65);
+        pop();
+      }
+      pop();
+
+      // Layer 3
+      fill(255, 210, 50);
+      push();
+      rotateZ(40);
+      let radius3 = 50 * (bloomScale * 0.8 + 0.2);
+      for (let i = 0; i < 6; i++) {
+        push();
+        rotateZ((360 / 6) * i);
+        rotateX(map(bloomScale, 0.1, 1.6, -45, 25));
+        ellipse(0, radius3 * 0.4, radius3 * 0.28, radius3 * 0.65);
+        pop();
+      }
+      pop();
+
+      // Core Pistil
       push();
       translate(0, 0, 5);
       fill(255, 230, 40);
