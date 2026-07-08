@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual Hand Kinetic Flower Mirror</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0f;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: sans-serif;
+        }
+        canvas {
+            display: block;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+            border-radius: 12px;
+        }
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: rgba(255,255,255,0.8);
+            background: rgba(0,0,0,0.5);
+            padding: 15px;
+            border-radius: 8px;
+            pointer-events: none;
+            line-height: 1.5;
+        }
+        .status { font-weight: bold; color: #4caf50; }
+        .data-label { color: #ffb74d; }
+    </style>
+    <!-- Importing p5.js Core Engine -->
+    <script src="https://cloudflare.com"></script>
+    <!-- Importing MediaPipe Hands Framework -->
+    <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
+    <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <div id="ui-overlay">
+        <div id="loading-status">🔄 Initializing MediaPipe Engine...</div>
+        <div id="telemetry" style="display:none;">
+            Status: <span class="status">Active Tracking</span><br>
+            Left Hand (Grow): <span id="grow-val" class="data-label">0.00</span><br>
+            Right Hand (Bloom): <span id="bloom-val" class="data-label">0.00</span>
+        </div>
+    </div>
+
+    <script>
+    p5.disableFriendlyErrors = true; // Complete performance bypass
+
+    let capture;
+    let handsMesh;
+    let trackingReady = false;
+
+    // Dual-hand telemetry systems
+    let leftHandY = 0.5;  // Default center positions
+    let rightHandDist = 0.1;
+
+    // Interpolation smoothers
+    let currentGrowth = 0.2;
+    let currentBloom = 0.2;
+    let sceneRotation = 0;
+
+    function setup() {
+      createCanvas(960, 540, WEBGL);
+      angleMode(DEGREES);
+
+      // Camera initialization
+      capture = createCapture(VIDEO);
+      capture.size(640, 480);
+      capture.hide();
+
+      // Instantiating the pipeline tracking engine
+      handsMesh = new window.Hands({
+        locateFile: (file) => `https://jsdelivr.net{file}`
+      });
+
+      handsMesh.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6
+      });
+
+      handsMesh.onResults(handleDualHandTracking);
+
+      const cameraPipeline = new window.Camera(capture.elt, {
+        onFrame: async () => {
+          await handsMesh.send({ image: capture.elt });
+        },
+        width: 640,
+        height: 480
+      });
+      cameraPipeline.start();
+    }
+
+    function draw() {
+      background(12, 12, 18);
+
+      // Dynamic cinematic workspace lighting
+      ambientLight(80, 80, 100);
+      directionalLight(255, 240, 220, 0.5, 0.7, -1);
+      pointLight(255, 180, 100, 0, -100, 200);
+
+      // Map dynamic values through standard linear interpolation (lerp)
+      // Left Hand vertical tracking drives the stalk elongation
+      let targetGrowth = map(leftHandY, 0.9, 0.1, 0.1, 1.8, true);
+      currentGrowth = lerp(currentGrowth, targetGrowth, 0.07);
+
+      // Right Hand finger pinch scale drives petal expansion
+      let targetBloom = map(rightHandDist, 0.03, 0.22, 0.1, 1.6, true);
+      currentBloom = lerp(currentBloom, targetBloom, 0.07);
+
+      // DOM UI Element Telemetry Updates
+      if (trackingReady) {
+        document.getElementById('loading-status').style.display = 'none';
+        document.getElementById('telemetry').style.display = 'block';
+        document.getElementById('grow-val').innerText = targetGrowth.toFixed(2);
+        document.getElementById('bloom-val').innerText = targetBloom.toFixed(2);
+      }
+
+      // Center and render workspace objects
+      push();
+      translate(0, 180, -100); // Anchor roots at bottom edge center
+      
+      sceneRotation += 0.3;
+      rotateY(sceneRotation);
+
+      // 1. GENERATING THE PROCEDURAL STEM (Controlled by LEFT Hand)
+      const segments = 14;
+      const segmentHeight = (260 * currentGrowth) / segments;
+      
+      for (let i = 0; i < segments; i++) {
+        // Subtle sway calculations
+        let sway = sin(i * 20 + sceneRotation) * 1.5;
+        translate(sway, -segmentHeight, 0);
+        rotateZ(sway * 0.05);
+        
+        fill(45, 140 - (i * 4), 85);
+        noStroke();
+        cylinder(14 - (i * 0.6), segmentHeight + 1);
+      }
+
+      // 2. RENDERING THE KINETIC FLOWER CROWN (Controlled by RIGHT Hand)
+      translate(0, -5, 0); 
+      rotateX(75); // Tilt head mesh toward viewer
+      
+      renderFlowerHead(currentBloom);
+      pop();
+    }
+
+    function handleDualHandTracking(results) {
+      if (!trackingReady) trackingReady = true;
+
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        
+        for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+          let landmarks = results.multiHandLandmarks[i];
+          let handedness = results.multiHandedness[i].label; // "Left" or "Right"
+          
+          // MediaPipe camera frame data arrives horizontally inverted
+          if (handedness === "Left") {
+            // Physical Right hand on camera -> Controls Bloom via Finger Tip Distances
+            let thumb = landmarks[4];
+            let index = landmarks[8];
+            rightHandDist = dist(thumb.x, thumb.y, thumb.z, index.x, index.y, index.z);
+          } 
+          else if (handedness === "Right") {
+            // Physical Left hand on camera -> Controls Stalk Height via Y-axis Position
+            leftHandY = landmarks[9].y; // Tracking core middle-knuckle point
+          }
+        }
+      }
+    }
+
+    function renderFlowerHead(bloomScale) {
+      let colors = [color(255, 70, 110), color(255, 140, 60), color(255, 210, 50)];
+      let sizes =;
+      let counts =;
+
+      for (let l = 0; l < 3; l++) {
+        fill(colors[l]);
+        push();
+        rotateZ(l * 20); 
+        
+        let count = counts[l];
+        let radius = sizes[l] * (bloomScale * 0.8 + 0.2);
+        
+        for (let i = 0; i < count; i++) {
+          push();
+          rotateZ((360 / count) * i);
+          
+          // Petal pitch bends backward fluidly using right hand bloomScale variable
+          let bendAngle = map(bloomScale, 0.1, 1.6, -45, 25);
+          rotateX(bendAngle);
+          
+          ellipse(0, radius * 0.4, radius * 0.28, radius * 0.65);
+          pop();
+        }
+        pop();
+      }
+
+      // Core interior visual seed pistil pod
+      push();
+      translate(0, 0, 5);
+      fill(255, 230, 40);
+      specularMaterial(255);
+      shininess(30);
+      sphere(18 * (bloomScale * 0.5 + 0.5));
+      pop();
+    }
+    </script>
+</body>
+</html>
